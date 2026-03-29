@@ -7,18 +7,18 @@ import (
 
 // ProfileSummary is a lightweight view of the active profile (no per-mod meta.ini).
 type ProfileSummary struct {
-	ProfileDir            string `json:"profile_dir"`
-	ModsDir               string `json:"mods_dir"`
-	EnabledMods           int    `json:"enabled_mods"`
-	DisabledMods          int    `json:"disabled_mods"`
-	TotalModlistEntries   int    `json:"total_modlist_entries"`
-	DuplicateModNames     int    `json:"duplicate_mod_names"`
-	HasPluginsTxt         bool   `json:"has_plugins_txt"`
-	PluginsLineCount      int    `json:"plugins_line_count,omitempty"`
-	HasLoadorderTxt       bool   `json:"has_loadorder_txt"`
-	LoadorderLineCount    int    `json:"loadorder_line_count,omitempty"`
-	ModsMissingFolder     int    `json:"mods_missing_folder"`
-	ModsNotDirectory      int    `json:"mods_not_directory"`
+	ProfileDir          string `json:"profile_dir"`
+	ModsDir             string `json:"mods_dir"`
+	EnabledMods         int    `json:"enabled_mods"`
+	DisabledMods        int    `json:"disabled_mods"`
+	TotalModlistEntries int    `json:"total_modlist_entries"`
+	DuplicateModNames   int    `json:"duplicate_mod_names"`
+	HasPluginsTxt       bool   `json:"has_plugins_txt"`
+	PluginsLineCount    int    `json:"plugins_line_count,omitempty"`
+	HasLoadorderTxt     bool   `json:"has_loadorder_txt"`
+	LoadorderLineCount  int    `json:"loadorder_line_count,omitempty"`
+	ModsMissingFolder   int    `json:"mods_missing_folder"`
+	ModsNotDirectory    int    `json:"mods_not_directory"`
 }
 
 // BuildProfileSummary counts modlist state and optional list files; optionally checks mod folders exist under modsDir.

@@ -18,13 +18,18 @@ type ModRow struct {
 
 // Snapshot is the mo2_profile_snapshot JSON payload.
 type Snapshot struct {
-	ProfileDir     string   `json:"profile_dir"`
-	ModsDir        string   `json:"mods_dir"`
-	GeneratedAt    string   `json:"generated_at"`
-	Mods           []ModRow `json:"mods"`
-	PluginLines    []string `json:"plugin_lines,omitempty"`
-	LoadorderLines []string `json:"loadorder_lines,omitempty"`
-	Warnings       []string `json:"warnings"`
+	ProfileDir              string               `json:"profile_dir"`
+	ModsDir                 string               `json:"mods_dir"`
+	GeneratedAt             string               `json:"generated_at"`
+	Mods                    []ModRow             `json:"mods"`
+	PluginLines             []string             `json:"plugin_lines,omitempty"`
+	LoadorderLines          []string             `json:"loadorder_lines,omitempty"`
+	SnapshotContractVersion string               `json:"snapshot_contract_version,omitempty"`
+	ProfileIni              []ProfileIniEntry    `json:"profile_ini,omitempty"`
+	ProfileListPaths        *ProfileListPaths    `json:"profile_list_paths,omitempty"`
+	ArchiveSearchRoots      []ArchiveSearchRoot  `json:"archive_search_roots,omitempty"`
+	PluginsOrdered          []PluginOrderedEntry `json:"plugins_ordered,omitempty"`
+	Warnings                []string             `json:"warnings"`
 }
 
 // BuildSnapshot reads modlist, optional plugins/loadorder, and meta.ini per mod folder (full snapshot).
@@ -107,6 +112,10 @@ func BuildSnapshotWithOptions(cfg Config, opts SnapshotOptions) (*Snapshot, erro
 			}
 		}
 		snap.Mods = append(snap.Mods, row)
+	}
+
+	if err := applySnapshotContract(snap, cfg, opts); err != nil {
+		return nil, err
 	}
 
 	return snap, nil

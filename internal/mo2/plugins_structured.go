@@ -22,6 +22,11 @@ func ParsePluginsFile(profileDir string) ([]PluginEntry, error) {
 	if err != nil {
 		return nil, fmt.Errorf("read plugins.txt: %w", err)
 	}
+	return ParsePluginsFromBytes(raw), nil
+}
+
+// ParsePluginsFromBytes parses plugins.txt content (same rules as ParsePluginsFile).
+func ParsePluginsFromBytes(raw []byte) []PluginEntry {
 	lines := parsePluginLinesFromBytes(raw)
 	var out []PluginEntry
 	for _, line := range lines {
@@ -36,7 +41,7 @@ func ParsePluginsFile(profileDir string) ([]PluginEntry, error) {
 		}
 		out = append(out, PluginEntry{Name: s, Active: active})
 	}
-	return out, nil
+	return out
 }
 
 func parsePluginLinesFromBytes(raw []byte) []string {

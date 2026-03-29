@@ -22,8 +22,8 @@ func TestExtractNexusLocal_SkyUIStyle(t *testing.T) {
 
 func TestExtractNexusLocal_modIDKeys(t *testing.T) {
 	meta := map[string]string{
-		"General.modID": "12345",
-		"General.fileID": "987654",
+		"General.modID":    "12345",
+		"General.fileID":   "987654",
 		"General.gameName": "Skyrim Special Edition",
 	}
 	n, _ := ExtractNexusLocal(meta)

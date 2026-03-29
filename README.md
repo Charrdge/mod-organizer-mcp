@@ -1,6 +1,6 @@
 # mod-organizer-mcp
 
-Read-only [MCP](https://modelcontextprotocol.io/) server for **Mod Organizer 2**: builds a JSON snapshot from `modlist.txt`, optional `plugins.txt` / `loadorder.txt`, and per-mod `meta.ini` under the `mods` folder. **No writes** to your MO2 or game directories.
+Read-only [MCP](https://modelcontextprotocol.io/) server for **Mod Organizer 2**: reads `modlist.txt`, optional `plugins.txt` / `loadorder.txt`, and per-mod `meta.ini` under `MO2_MODS_DIR`. Exposes a full **`mo2_profile_snapshot`**, a lightweight **`mo2_profile_machine_contract`** (paths + archive roots without `mods[]` / meta), optional **`mo2_profile_plugin_load_order`**, plus summaries, Nexus fields from disk, loose-file conflicts, etc. **No writes** to your MO2 or game directories.
 
 ## Requirements
 
@@ -111,7 +111,9 @@ If the binary lives elsewhere, use `go build` output path or `"command": "go"` w
 | **`mo2_server_info`** | Version and resolved env paths, or `config_error`. |
 | **`mo2_list_profiles`** | Sibling profiles under the parent of `MO2_PROFILE_DIR` (each folder with `modlist.txt`): name, path, modlist entry count. |
 | **`mo2_profile_summary`** | Counts (`+`/`-` mods, duplicates in modlist), `plugins.txt` / `loadorder.txt` presence and line counts, missing mod folders. Does **not** read `meta.ini`. |
-| **`mo2_profile_snapshot`** | Full JSON snapshot (`mods[]` with optional `meta`, `plugin_lines`, `loadorder_lines`). Optional arguments (all optional): `include_meta`, `include_plugin_lines`, `include_loadorder_lines` (default **true** each), `only_enabled`, `mod_name_prefix`. Omit arguments for legacy full snapshot. |
+| **`mo2_profile_snapshot`** | Full JSON snapshot (`mods[]` with optional `meta`, `plugin_lines`, `loadorder_lines`). By default also includes **`snapshot_contract_version`**, **`profile_ini`** (whitelist under the profile), **`profile_list_paths`** (absolute `plugins.txt` / `loadorder.txt` + `present`), **`archive_search_roots`** (per-mod `mod_root` and optional `data_subdir` for archive scanning). Set **`include_contract`: false** to omit that block. **`include_plugin_load_order`: true** adds **`plugins_ordered`** (merge of loadorder + plugins.txt); default **false** (use Mutagen when available). Other optional args: `include_meta`, `include_plugin_lines`, `include_loadorder_lines` (default **true** each), `only_enabled`, `mod_name_prefix`. |
+| **`mo2_profile_machine_contract`** | Same contract fields as the default snapshot block, **without** `mods[]`, line arrays, or `meta.ini`. Optional **`only_enabled`**, **`mod_name_prefix`** (filter `archive_search_roots`). |
+| **`mo2_profile_plugin_load_order`** | **`plugins_ordered`** (loadorder + `plugins.txt` active) and **`profile_list_paths`**. For MO2-only use; prefer Mutagen’s **`mutagen_list_plugins`** when configured. |
 | **`mo2_nexus_local_index`** | Compact Nexus-oriented fields from each mod’s `meta.ini` (`nexus_mod_id`, `nexus_file_id`, version, game, etc.). Root fields: `source` = `"meta_ini"`, `live_nexus_api` = **false** — this is MO’s last-known disk metadata, not the live Nexus API. Optional: `only_enabled`. |
 | **`mo2_mod_lookup`** | Argument `name`: one mod (exact → case-insensitive → unique prefix). Returns `match` or `ambiguous_candidates` / `not_found`. |
 | **`mo2_list_plugins`** | Structured `plugins.txt`: `name` + `active` (leading `*` → inactive). |
@@ -143,7 +145,10 @@ MCP **resources** (`mo2://…` URIs), optional `MO2_INSTANCE_DIR` + `modorganize
 
 ## Agent notes
 
-- Prefer **`mo2_profile_summary`** or **`mo2_nexus_local_index`** when you need small JSON; use **`mo2_profile_snapshot`** with filters or only when you need full `meta` / line lists.
+- Prefer **`mo2_profile_summary`** for counts only; **`mo2_profile_machine_contract`** when you need INI/list-path/archive roots without walking **`meta.ini`** or returning **`mods[]`** (use **`only_enabled`** / **`mod_name_prefix`** to shrink **`archive_search_roots`**).
+- Use **`mo2_profile_plugin_load_order`** only in MO2-only flows; if **Mutagen** is configured, prefer **`mutagen_list_plugins`** for ordered plugins + disk resolution.
+- **`mo2_profile_snapshot`** accepts the same filters as before, plus **`include_contract`** (default on) and **`include_plugin_load_order`** (default off). Narrow with **`include_meta`**, **`mod_name_prefix`**, **`only_enabled`** as needed.
+- Tool **argument schemas** (including filters) are inferred from the Go structs and exposed to MCP clients via **`tools/list`** (`jsonschema` tags on fields).
 - For texture/mesh/script overlaps, call **`mo2_asset_conflicts`** with a **`path_prefix`** (and lower **`max_files_total`** if needed) so the JSON stays bounded.
 - After context compaction, re-call **`mo2_nexus_local_index`** instead of repeating the same Nexus API requests for ids already on disk.
 

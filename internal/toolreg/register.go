@@ -8,14 +8,16 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
-const serverVersion = "0.3.0"
+const serverVersion = "0.5.0"
 
 type profileSnapshotArgs struct {
-	IncludeMeta           *bool  `json:"include_meta,omitempty" jsonschema:"When false, skips per-mod meta.ini (faster). Default true."`
-	IncludePluginLines    *bool  `json:"include_plugin_lines,omitempty" jsonschema:"Include plugins.txt lines in output. Default true."`
-	IncludeLoadorderLines *bool  `json:"include_loadorder_lines,omitempty" jsonschema:"Include loadorder.txt lines. Default true."`
-	OnlyEnabled           bool   `json:"only_enabled,omitempty" jsonschema:"Only mods with + in modlist."`
-	ModNamePrefix         string `json:"mod_name_prefix,omitempty" jsonschema:"Only mods whose folder name starts with this prefix."`
+	IncludeMeta            *bool  `json:"include_meta,omitempty" jsonschema:"When false, skips per-mod meta.ini (faster). Default true."`
+	IncludePluginLines     *bool  `json:"include_plugin_lines,omitempty" jsonschema:"Include plugins.txt lines in output. Default true."`
+	IncludeLoadorderLines  *bool  `json:"include_loadorder_lines,omitempty" jsonschema:"Include loadorder.txt lines. Default true."`
+	OnlyEnabled            bool   `json:"only_enabled,omitempty" jsonschema:"Only mods with + in modlist."`
+	ModNamePrefix          string `json:"mod_name_prefix,omitempty" jsonschema:"Only mods whose folder name starts with this prefix."`
+	IncludeContract        *bool  `json:"include_contract,omitempty" jsonschema:"When false, omits snapshot_contract_version, profile_ini, profile_list_paths, archive_search_roots. Default true."`
+	IncludePluginLoadOrder *bool  `json:"include_plugin_load_order,omitempty" jsonschema:"When true, adds plugins_ordered (loadorder.txt + plugins.txt merge). Default false; use mutagen_list_plugins when Mutagen is available."`
 }
 
 func mergeAssetConflictOpts(in assetConflictsArgs) mo2.AssetConflictOptions {
@@ -50,7 +52,18 @@ func mergeSnapshotOpts(in profileSnapshotArgs) mo2.SnapshotOptions {
 	}
 	o.OnlyEnabled = in.OnlyEnabled
 	o.ModNamePrefix = in.ModNamePrefix
+	if in.IncludeContract != nil {
+		o.IncludeContract = *in.IncludeContract
+	}
+	if in.IncludePluginLoadOrder != nil {
+		o.IncludePluginLoadOrder = *in.IncludePluginLoadOrder
+	}
 	return o
+}
+
+type machineContractArgs struct {
+	OnlyEnabled   bool   `json:"only_enabled,omitempty" jsonschema:"If true, only + mods from modlist for archive_search_roots."`
+	ModNamePrefix string `json:"mod_name_prefix,omitempty" jsonschema:"Only mods whose folder name starts with this prefix (same as mo2_profile_snapshot)."`
 }
 
 type nexusLocalArgs struct {
@@ -90,7 +103,7 @@ func jsonText(v any) *mcp.CallToolResult {
 func Register(server *mcp.Server) {
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "mo2_profile_snapshot",
-		Description: "Read-only: JSON snapshot from MO2_PROFILE_DIR (modlist.txt, optional plugins.txt/loadorder.txt) and MO2_MODS_DIR (per-mod meta.ini). Optional filters reduce payload size. Paths only from environment.",
+		Description: "Read-only: JSON snapshot from MO2_PROFILE_DIR and MO2_MODS_DIR. By default includes machine-readable contract: snapshot_contract_version, profile_ini (whitelist), profile_list_paths (abs plugins.txt/loadorder.txt), archive_search_roots (per-mod mod_root and optional data_subdir for .bsa/.ba2 scanning). Set include_plugin_load_order true for plugins_ordered (off by default; prefer Mutagen for plugin lists). Optional filters: include_meta, plugin/loadorder lines, only_enabled, mod_name_prefix, include_contract.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in profileSnapshotArgs) (*mcp.CallToolResult, any, error) {
 		cfg, err := mo2.ConfigFromEnv()
 		if err != nil {
@@ -101,6 +114,36 @@ func Register(server *mcp.Server) {
 			return toolErr(err.Error()), nil, nil
 		}
 		return jsonText(snap), nil, nil
+	})
+
+	mcp.AddTool(server, &mcp.Tool{
+		Name:        "mo2_profile_machine_contract",
+		Description: "Read-only: machine-readable next-step contract only (snapshot_contract_version, profile_ini whitelist, profile_list_paths, archive_search_roots). No mods[] or meta.ini. Same path env as snapshot. Optional only_enabled and mod_name_prefix filter roots.",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in machineContractArgs) (*mcp.CallToolResult, any, error) {
+		cfg, err := mo2.ConfigFromEnv()
+		if err != nil {
+			return toolErr(err.Error()), nil, nil
+		}
+		out, err := mo2.BuildMachineContractPayload(cfg, in.OnlyEnabled, in.ModNamePrefix)
+		if err != nil {
+			return toolErr(err.Error()), nil, nil
+		}
+		return jsonText(out), nil, nil
+	})
+
+	mcp.AddTool(server, &mcp.Tool{
+		Name:        "mo2_profile_plugin_load_order",
+		Description: "Read-only: plugins_ordered from loadorder.txt merged with plugins.txt active flags, plus profile_list_paths. For MO2-only workflows without Mutagen; prefer mutagen_list_plugins when Mutagen is configured.",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, _ struct{}) (*mcp.CallToolResult, any, error) {
+		cfg, err := mo2.ConfigFromEnv()
+		if err != nil {
+			return toolErr(err.Error()), nil, nil
+		}
+		out, err := mo2.BuildPluginLoadOrderPayload(cfg)
+		if err != nil {
+			return toolErr(err.Error()), nil, nil
+		}
+		return jsonText(out), nil, nil
 	})
 
 	mcp.AddTool(server, &mcp.Tool{

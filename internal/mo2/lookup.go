@@ -9,9 +9,9 @@ import (
 
 // ModLookupResult is returned by LookupMod for MCP mo2_mod_lookup.
 type ModLookupResult struct {
-	Match      *ModLookupMatch `json:"match,omitempty"`
-	Ambiguous  []string        `json:"ambiguous_candidates,omitempty"`
-	NotFound   bool            `json:"not_found"`
+	Match     *ModLookupMatch `json:"match,omitempty"`
+	Ambiguous []string        `json:"ambiguous_candidates,omitempty"`
+	NotFound  bool            `json:"not_found"`
 }
 
 // ModLookupMatch is one resolved mod from modlist + meta.ini.
