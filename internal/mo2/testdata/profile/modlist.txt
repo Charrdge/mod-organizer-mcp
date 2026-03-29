@@ -1,0 +1,6 @@
+# test profile
++SkyUI
+-DisabledMod
++NoMetaMod
++GhostMod
++SkyUI

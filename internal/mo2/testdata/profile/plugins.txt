@@ -1,0 +1,3 @@
+# plugins
+Skyrim.esm
+*Disabled.esp

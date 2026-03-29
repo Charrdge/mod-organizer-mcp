@@ -1,0 +1,6 @@
+/bin/
+/dist/
+*.exe
+
+# Cursor: local plans often contain absolute paths (home dir, machine-specific links)
+.cursor/
