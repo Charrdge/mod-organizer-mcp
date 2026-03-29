@@ -15,7 +15,7 @@ import (
 func main() {
 	server := mcp.NewServer(&mcp.Implementation{
 		Name:    "mod-organizer-mcp",
-		Version: "0.2.0",
+		Version: "0.3.0",
 	}, nil)
 	toolreg.Register(server)
 

@@ -8,7 +8,7 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
-const serverVersion = "0.2.0"
+const serverVersion = "0.3.0"
 
 type profileSnapshotArgs struct {
 	IncludeMeta           *bool  `json:"include_meta,omitempty" jsonschema:"When false, skips per-mod meta.ini (faster). Default true."`
@@ -16,6 +16,25 @@ type profileSnapshotArgs struct {
 	IncludeLoadorderLines *bool  `json:"include_loadorder_lines,omitempty" jsonschema:"Include loadorder.txt lines. Default true."`
 	OnlyEnabled           bool   `json:"only_enabled,omitempty" jsonschema:"Only mods with + in modlist."`
 	ModNamePrefix         string `json:"mod_name_prefix,omitempty" jsonschema:"Only mods whose folder name starts with this prefix."`
+}
+
+func mergeAssetConflictOpts(in assetConflictsArgs) mo2.AssetConflictOptions {
+	o := mo2.DefaultAssetConflictOptions()
+	if in.OnlyEnabled != nil {
+		o.OnlyEnabled = *in.OnlyEnabled
+	}
+	o.PathPrefix = in.PathPrefix
+	if in.MaxFilesTotal > 0 {
+		o.MaxFilesTotal = in.MaxFilesTotal
+	}
+	if in.MaxDepth > 0 {
+		o.MaxDepth = in.MaxDepth
+	}
+	if in.StripDataPrefix != nil {
+		o.StripDataPrefix = *in.StripDataPrefix
+	}
+	o.IncludeSingleWinnerPaths = in.IncludeSingleWinnerPaths
+	return o
 }
 
 func mergeSnapshotOpts(in profileSnapshotArgs) mo2.SnapshotOptions {
@@ -46,6 +65,15 @@ type listModPluginsArgs struct {
 	Name     string `json:"name" jsonschema:"Mod folder name under MO2_MODS_DIR"`
 	MaxDepth int    `json:"max_depth,omitempty" jsonschema:"Max directory depth from mod root; default 8"`
 	MaxFiles int    `json:"max_files,omitempty" jsonschema:"Max plugin files returned; default 200"`
+}
+
+type assetConflictsArgs struct {
+	OnlyEnabled              *bool  `json:"only_enabled,omitempty" jsonschema:"If true (default), only + mods from modlist"`
+	PathPrefix               string `json:"path_prefix,omitempty" jsonschema:"Only virtual paths with this prefix (forward slashes), e.g. textures/"`
+	MaxFilesTotal            int    `json:"max_files_total,omitempty" jsonschema:"Stop after scanning this many files across all mods; default 200000"`
+	MaxDepth                 int    `json:"max_depth,omitempty" jsonschema:"Max slash-depth from mod root (0 = unlimited)"`
+	StripDataPrefix          *bool  `json:"strip_data_prefix,omitempty" jsonschema:"If true (default), strip leading Data/ segment so Data/textures/ matches textures/"`
+	IncludeSingleWinnerPaths bool   `json:"include_single_winner_paths,omitempty" jsonschema:"If true, include paths provided by only one mod (large JSON). Default false."`
 }
 
 func jsonText(v any) *mcp.CallToolResult {
@@ -148,6 +176,21 @@ func Register(server *mcp.Server) {
 			return toolErr(err.Error()), nil, nil
 		}
 		return jsonText(ents), nil, nil
+	})
+
+	mcp.AddTool(server, &mcp.Tool{
+		Name:        "mo2_asset_conflicts",
+		Description: "Loose files only (not BSA/BA2): scan enabled mods in modlist order and list virtual paths where multiple mods provide the same relative game path. Later mod in modlist (higher order) wins. Use path_prefix and max_files_total to limit scope. See priority_note in JSON.",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in assetConflictsArgs) (*mcp.CallToolResult, any, error) {
+		cfg, err := mo2.ConfigFromEnv()
+		if err != nil {
+			return toolErr(err.Error()), nil, nil
+		}
+		report, err := mo2.BuildAssetConflicts(cfg, mergeAssetConflictOpts(in))
+		if err != nil {
+			return toolErr(err.Error()), nil, nil
+		}
+		return jsonText(report), nil, nil
 	})
 
 	mcp.AddTool(server, &mcp.Tool{

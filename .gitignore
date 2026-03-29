@@ -2,5 +2,8 @@
 /dist/
 *.exe
 
+# Local build output (go build -o mod-organizer-mcp)
+/mod-organizer-mcp
+
 # Cursor: local plans often contain absolute paths (home dir, machine-specific links)
 .cursor/

@@ -116,6 +116,7 @@ If the binary lives elsewhere, use `go build` output path or `"command": "go"` w
 | **`mo2_mod_lookup`** | Argument `name`: one mod (exact → case-insensitive → unique prefix). Returns `match` or `ambiguous_candidates` / `not_found`. |
 | **`mo2_list_plugins`** | Structured `plugins.txt`: `name` + `active` (leading `*` → inactive). |
 | **`mo2_list_mod_plugins`** | Arguments: `name`, optional `max_depth` (default 8), `max_files` (default 200). Lists `.esp` / `.esm` / `.esl` under that mod folder (paths relative to `MO2_MODS_DIR`). |
+| **`mo2_asset_conflicts`** | **Loose files only** (not BSA/BA2): walks enabled mods in `modlist.txt` order and returns `conflicts[]` where two or more mods expose the same virtual path under the mod folder (treated like game `Data`). **Priority:** a mod **later** in `modlist.txt` wins (higher `order` in JSON). Optional: `path_prefix` (e.g. `textures/`), `max_files_total` (default 200000), `max_depth`, `strip_data_prefix` (default true: `Data/textures/…` → `textures/…`), `include_single_winner_paths` (default false; full map is huge). Response includes `priority_note`, `scanned_files`, and `warnings` (e.g. truncation). Can be slow on large lists; narrow with `path_prefix`. |
 
 ## Safety and policy
 
@@ -138,11 +139,12 @@ If tools fail with errors like `Transport endpoint is not connected` or `no such
 
 ### Backlog (not implemented here)
 
-MCP **resources** (`mo2://…` URIs), optional `MO2_INSTANCE_DIR` + `modorganizer.ini`, and parsing MO2 **`webcache`** are left for future work.
+MCP **resources** (`mo2://…` URIs), optional `MO2_INSTANCE_DIR` + `modorganizer.ini`, parsing MO2 **`webcache`**, **BSA/BA2** indexing, and stricter **USVFS** parity are left for future work.
 
 ## Agent notes
 
 - Prefer **`mo2_profile_summary`** or **`mo2_nexus_local_index`** when you need small JSON; use **`mo2_profile_snapshot`** with filters or only when you need full `meta` / line lists.
+- For texture/mesh/script overlaps, call **`mo2_asset_conflicts`** with a **`path_prefix`** (and lower **`max_files_total`** if needed) so the JSON stays bounded.
 - After context compaction, re-call **`mo2_nexus_local_index`** instead of repeating the same Nexus API requests for ids already on disk.
 
 ## Public repo / forks
