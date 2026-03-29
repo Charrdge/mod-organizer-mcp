@@ -18,6 +18,26 @@ Read-only [MCP](https://modelcontextprotocol.io/) server for **Mod Organizer 2**
 go build -o mod-organizer-mcp ./cmd/server
 ```
 
+### Docker (recommended if you already run other MCPs in Docker)
+
+Build once:
+
+```bash
+docker build -t mod-organizer-mcp:local .
+```
+
+The container has no access to your disks until you **bind-mount** the MO2 data tree. Map your real `MO2_data` (or equivalent) to **`/mo2`** inside the container, then point env vars at paths **under `/mo2`**:
+
+```bash
+docker run --rm -i \
+  -e MO2_PROFILE_DIR=/mo2/profiles/MyProfile \
+  -e MO2_MODS_DIR=/mo2/mods \
+  -v "/path/to/MO2_data:/mo2:ro" \
+  mod-organizer-mcp:local
+```
+
+Use `:ro` so the process cannot write your MO2 tree even if a bug regressed.
+
 ## Run (stdio, for Cursor)
 
 ```bash
@@ -36,6 +56,36 @@ export MCP_HTTP_ADDR=":8080"
 
 ## Cursor MCP config example
 
+### Docker (stdio, same idea as nexusmods-mcp)
+
+Mount **host** `MO2_data` at **`/mo2`** in the container; env vars use **in-container** paths.
+
+```json
+{
+  "mcpServers": {
+    "mod-organizer-mcp": {
+      "command": "docker",
+      "args": [
+        "run",
+        "--rm",
+        "-i",
+        "-e",
+        "MO2_PROFILE_DIR=/mo2/profiles/MyProfile",
+        "-e",
+        "MO2_MODS_DIR=/mo2/mods",
+        "-v",
+        "/path/to/MO2_data:/mo2:ro",
+        "mod-organizer-mcp:local"
+      ]
+    }
+  }
+}
+```
+
+Replace `/path/to/MO2_data` with the directory that contains `profiles/` and `mods/` (on WSL often something like `/mnt/s/Games/MO2_data`). Profile name (`MyProfile`) must match a folder under `profiles/`. Build the image first: `docker build -t mod-organizer-mcp:local .` in this repo.
+
+### Native binary or `go run`
+
 Adjust paths to your layout. Paths with spaces must be quoted in JSON.
 
 ```json
@@ -52,7 +102,7 @@ Adjust paths to your layout. Paths with spaces must be quoted in JSON.
 }
 ```
 
-If the binary lives elsewhere, use `go build` output path or `command": "go"` with `args`: `["run", "./cmd/server"]` and `cwd` set to this repo (slower startup).
+If the binary lives elsewhere, use `go build` output path or `"command": "go"` with `"args": ["run", "-C", "/path/to/mod-organizer-mcp", "./cmd/server"]` (slower startup).
 
 ## Tools
 

@@ -11,11 +11,11 @@ import (
 const serverVersion = "0.2.0"
 
 type profileSnapshotArgs struct {
-	IncludeMeta           *bool  `json:"include_meta,omitempty" jsonschema:"description=When false, skips per-mod meta.ini (faster). Default true."`
-	IncludePluginLines    *bool  `json:"include_plugin_lines,omitempty" jsonschema:"description=Include plugins.txt lines in output. Default true."`
-	IncludeLoadorderLines *bool  `json:"include_loadorder_lines,omitempty" jsonschema:"description=Include loadorder.txt lines. Default true."`
-	OnlyEnabled           bool   `json:"only_enabled,omitempty" jsonschema:"description=Only mods with + in modlist."`
-	ModNamePrefix         string `json:"mod_name_prefix,omitempty" jsonschema:"description=Only mods whose folder name starts with this prefix."`
+	IncludeMeta           *bool  `json:"include_meta,omitempty" jsonschema:"When false, skips per-mod meta.ini (faster). Default true."`
+	IncludePluginLines    *bool  `json:"include_plugin_lines,omitempty" jsonschema:"Include plugins.txt lines in output. Default true."`
+	IncludeLoadorderLines *bool  `json:"include_loadorder_lines,omitempty" jsonschema:"Include loadorder.txt lines. Default true."`
+	OnlyEnabled           bool   `json:"only_enabled,omitempty" jsonschema:"Only mods with + in modlist."`
+	ModNamePrefix         string `json:"mod_name_prefix,omitempty" jsonschema:"Only mods whose folder name starts with this prefix."`
 }
 
 func mergeSnapshotOpts(in profileSnapshotArgs) mo2.SnapshotOptions {
@@ -35,17 +35,17 @@ func mergeSnapshotOpts(in profileSnapshotArgs) mo2.SnapshotOptions {
 }
 
 type nexusLocalArgs struct {
-	OnlyEnabled bool `json:"only_enabled,omitempty" jsonschema:"description=If true, only + mods from modlist."`
+	OnlyEnabled bool `json:"only_enabled,omitempty" jsonschema:"If true, only + mods from modlist."`
 }
 
 type modLookupArgs struct {
-	Name string `json:"name" jsonschema:"description=Mod folder name as in modlist (exact, case-insensitive, or unique prefix)"`
+	Name string `json:"name" jsonschema:"Mod folder name as in modlist (exact, case-insensitive, or unique prefix)"`
 }
 
 type listModPluginsArgs struct {
-	Name     string `json:"name" jsonschema:"description=Mod folder name under MO2_MODS_DIR"`
-	MaxDepth int    `json:"max_depth,omitempty" jsonschema:"description=Max directory depth from mod root; default 8"`
-	MaxFiles int    `json:"max_files,omitempty" jsonschema:"description=Max plugin files returned; default 200"`
+	Name     string `json:"name" jsonschema:"Mod folder name under MO2_MODS_DIR"`
+	MaxDepth int    `json:"max_depth,omitempty" jsonschema:"Max directory depth from mod root; default 8"`
+	MaxFiles int    `json:"max_files,omitempty" jsonschema:"Max plugin files returned; default 200"`
 }
 
 func jsonText(v any) *mcp.CallToolResult {
