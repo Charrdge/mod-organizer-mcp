@@ -1,6 +1,6 @@
 # mod-organizer-mcp
 
-Read-only [MCP](https://modelcontextprotocol.io/) server for **Mod Organizer 2**: reads `modlist.txt`, optional `plugins.txt` / `loadorder.txt`, and per-mod `meta.ini` under `MO2_MODS_DIR`. Exposes a full **`mo2_profile_snapshot`**, a lightweight **`mo2_profile_machine_contract`** (paths + archive roots without `mods[]` / meta), optional **`mo2_profile_plugin_load_order`**, plus summaries, Nexus fields from disk, loose-file conflicts, etc. **No writes** to your MO2 or game directories.
+Read-only [MCP](https://modelcontextprotocol.io/) server for **Mod Organizer 2**: reads `modlist.txt`, optional `plugins.txt` / `loadorder.txt`, and per-mod `meta.ini` under `MO2_MODS_DIR`. Exposes a full **`mo2_profile_snapshot`**, a lightweight **`mo2_profile_machine_contract`** (paths + archive roots without `mods[]` / meta), optional **`mo2_profile_plugin_load_order`**, **`mo2_skse_plugins`** (SKSE `Plugins` `.dll` inventory with MO2 overlay semantics), plus summaries, Nexus fields from disk, loose-file conflicts, etc. **No writes** to your MO2 or game directories.
 
 ## Requirements
 
@@ -33,6 +33,17 @@ docker run --rm -i \
   -e MO2_PROFILE_DIR=/mo2/profiles/MyProfile \
   -e MO2_MODS_DIR=/mo2/mods \
   -v "/path/to/MO2_data:/mo2:ro" \
+  mod-organizer-mcp:local
+```
+
+**Optional — game `Data` for `mo2_skse_plugins`:** to use tool argument **`game_data_dir`** inside the container (baseline `SKSE/Plugins` from the real game, provider **`GameData`**, lowest priority), mount the game’s **`Data`** folder to a path such as **`/game_data`** and pass **`game_data_dir": "/game_data"`** in the tool call (there is no env var for this).
+
+```bash
+docker run --rm -i \
+  -e MO2_PROFILE_DIR=/mo2/profiles/MyProfile \
+  -e MO2_MODS_DIR=/mo2/mods \
+  -v "/path/to/MO2_data:/mo2:ro" \
+  -v "/path/to/Skyrim Special Edition/Data:/game_data:ro" \
   mod-organizer-mcp:local
 ```
 
@@ -75,6 +86,8 @@ Mount **host** `MO2_data` at **`/mo2`** in the container; env vars use **in-cont
         "MO2_MODS_DIR=/mo2/mods",
         "-v",
         "/path/to/MO2_data:/mo2:ro",
+        "-v",
+        "/path/to/Skyrim Special Edition/Data:/game_data:ro",
         "mod-organizer-mcp:local"
       ]
     }
@@ -82,7 +95,7 @@ Mount **host** `MO2_data` at **`/mo2`** in the container; env vars use **in-cont
 }
 ```
 
-Replace `/path/to/MO2_data` with the directory that contains `profiles/` and `mods/` (on WSL often something like `/mnt/s/Games/MO2_data`). Profile name (`MyProfile`) must match a folder under `profiles/`. Build the image first: `docker build -t mod-organizer-mcp:local .` in this repo.
+Replace `/path/to/MO2_data` with the directory that contains `profiles/` and `mods/` (on WSL often something like `/mnt/s/Games/MO2_data`). Profile name (`MyProfile`) must match a folder under `profiles/`. The second **`-v`** line is optional: omit it if you do not need **`mo2_skse_plugins`** with **`game_data_dir": "/game_data"`**. Build the image first: `docker build -t mod-organizer-mcp:local .` in this repo.
 
 ### Native binary or `go run`
 
@@ -118,6 +131,7 @@ If the binary lives elsewhere, use `go build` output path or `"command": "go"` w
 | **`mo2_mod_lookup`** | Argument `name`: one mod (exact → case-insensitive → unique prefix). Returns `match` or `ambiguous_candidates` / `not_found`. |
 | **`mo2_list_plugins`** | Structured `plugins.txt`: `name` + `active` (leading `*` → inactive). |
 | **`mo2_list_mod_plugins`** | Arguments: `name`, optional `max_depth` (default 8), `max_files` (default 200). Lists `.esp` / `.esm` / `.esl` under that mod folder (paths relative to `MO2_MODS_DIR`). |
+| **`mo2_skse_plugins`** | **SKSE plugin DLLs (loose only):** lists `.dll` under virtual `Data/SKSE/Plugins` by scanning each enabled mod’s `Data/SKSE/Plugins` and `SKSE/Plugins`. **Priority:** same as loose assets — a mod **later** in `modlist.txt` wins (`plugins[]` includes `winner`, `providers`, optional `size`). Optional **`game_data_dir`**: absolute path to the game’s **`Data`** folder; adds `<Data>/SKSE/Plugins` as provider **`GameData`** with order **-1** (any mod overrides it). Optional **`include_pe_version`**: PE `FileVersion` / `ProductVersion` (slower). Other args: **`only_enabled`** (default true), **`mod_name_prefix`**, **`max_dlls`** (default 500, sets **`truncated`**), **`include_size`** (default true), **`strip_data_prefix`** (default true). See **`priority_note`** in JSON. |
 | **`mo2_asset_conflicts`** | **Loose files only** (not BSA/BA2): walks enabled mods in `modlist.txt` order and returns `conflicts[]` where two or more mods expose the same virtual path under the mod folder (treated like game `Data`). **Priority:** a mod **later** in `modlist.txt` wins (higher `order` in JSON). Optional: `path_prefix` (e.g. `textures/`), `max_files_total` (default 200000), `max_depth`, `strip_data_prefix` (default true: `Data/textures/…` → `textures/…`), `include_single_winner_paths` (default false; full map is huge). Response includes `priority_note`, `scanned_files`, and `warnings` (e.g. truncation). Can be slow on large lists; narrow with `path_prefix`. |
 
 ## Safety and policy
@@ -149,6 +163,7 @@ MCP **resources** (`mo2://…` URIs), optional `MO2_INSTANCE_DIR` + `modorganize
 - Use **`mo2_profile_plugin_load_order`** only in MO2-only flows; if **Mutagen** is configured, prefer **`mutagen_list_plugins`** for ordered plugins + disk resolution.
 - **`mo2_profile_snapshot`** accepts the same filters as before, plus **`include_contract`** (default on) and **`include_plugin_load_order`** (default off). Narrow with **`include_meta`**, **`mod_name_prefix`**, **`only_enabled`** as needed.
 - Tool **argument schemas** (including filters) are inferred from the Go structs and exposed to MCP clients via **`tools/list`** (`jsonschema` tags on fields).
+- For **SKSE native plugins** (`.dll` in `SKSE/Plugins`), call **`mo2_skse_plugins`**; pass **`game_data_dir`** as the game **`Data`** path when you need baseline DLLs from disk (e.g. Docker mount). Use **`include_pe_version`** only when you need PE version strings.
 - For texture/mesh/script overlaps, call **`mo2_asset_conflicts`** with a **`path_prefix`** (and lower **`max_files_total`** if needed) so the JSON stays bounded.
 - After context compaction, re-call **`mo2_nexus_local_index`** instead of repeating the same Nexus API requests for ids already on disk.
 

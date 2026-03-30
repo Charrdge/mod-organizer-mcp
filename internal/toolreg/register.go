@@ -8,7 +8,7 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
-const serverVersion = "0.5.0"
+const serverVersion = "0.6.0"
 
 type profileSnapshotArgs struct {
 	IncludeMeta            *bool  `json:"include_meta,omitempty" jsonschema:"When false, skips per-mod meta.ini (faster). Default true."`
@@ -78,6 +78,36 @@ type listModPluginsArgs struct {
 	Name     string `json:"name" jsonschema:"Mod folder name under MO2_MODS_DIR"`
 	MaxDepth int    `json:"max_depth,omitempty" jsonschema:"Max directory depth from mod root; default 8"`
 	MaxFiles int    `json:"max_files,omitempty" jsonschema:"Max plugin files returned; default 200"`
+}
+
+type sksePluginsArgs struct {
+	OnlyEnabled      *bool  `json:"only_enabled,omitempty" jsonschema:"If true (default), only + mods from modlist"`
+	ModNamePrefix    string `json:"mod_name_prefix,omitempty" jsonschema:"Only mods whose folder name starts with this prefix"`
+	GameDataDir      string `json:"game_data_dir,omitempty" jsonschema:"Optional absolute path to the game's Data folder; scans <path>/SKSE/Plugins as lowest-priority overlay (below all mods)"`
+	IncludeSize      *bool  `json:"include_size,omitempty" jsonschema:"Include winner file size in bytes. Default true."`
+	IncludePEVersion bool   `json:"include_pe_version,omitempty" jsonschema:"Parse PE StringFileInfo for FileVersion/ProductVersion (slower). Default false."`
+	MaxDLLs          int    `json:"max_dlls,omitempty" jsonschema:"Max unique virtual paths in output; default 500"`
+	StripDataPrefix  *bool  `json:"strip_data_prefix,omitempty" jsonschema:"If true (default), strip leading Data/ for virtual paths"`
+}
+
+func mergeSKSEOpts(in sksePluginsArgs) mo2.SKSEPluginOptions {
+	o := mo2.DefaultSKSEPluginOptions()
+	if in.OnlyEnabled != nil {
+		o.OnlyEnabled = *in.OnlyEnabled
+	}
+	o.ModNamePrefix = in.ModNamePrefix
+	o.GameDataDir = in.GameDataDir
+	if in.IncludeSize != nil {
+		o.IncludeSize = *in.IncludeSize
+	}
+	o.IncludePEVersion = in.IncludePEVersion
+	if in.MaxDLLs > 0 {
+		o.MaxDLLs = in.MaxDLLs
+	}
+	if in.StripDataPrefix != nil {
+		o.StripDataPrefix = *in.StripDataPrefix
+	}
+	return o
 }
 
 type assetConflictsArgs struct {
@@ -219,6 +249,21 @@ func Register(server *mcp.Server) {
 			return toolErr(err.Error()), nil, nil
 		}
 		return jsonText(ents), nil, nil
+	})
+
+	mcp.AddTool(server, &mcp.Tool{
+		Name:        "mo2_skse_plugins",
+		Description: "Read-only: list .dll under virtual Data/SKSE/Plugins (loose files in enabled mods: Data/SKSE/Plugins and SKSE/Plugins). Resolves overlay winner by modlist order (later mod wins). Optional game_data_dir = game's Data folder path adds SKSE/Plugins from disk as lowest priority (GameData). Optional include_pe_version for PE FileVersion/ProductVersion. See priority_note in JSON.",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in sksePluginsArgs) (*mcp.CallToolResult, any, error) {
+		cfg, err := mo2.ConfigFromEnv()
+		if err != nil {
+			return toolErr(err.Error()), nil, nil
+		}
+		report, err := mo2.BuildSKSEPluginInventory(cfg, mergeSKSEOpts(in))
+		if err != nil {
+			return toolErr(err.Error()), nil, nil
+		}
+		return jsonText(report), nil, nil
 	})
 
 	mcp.AddTool(server, &mcp.Tool{
